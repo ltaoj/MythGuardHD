@@ -8,7 +8,7 @@
 import sys
 import RPi.GPIO as GPIO
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -16,17 +16,23 @@ app = Flask(__name__)
 @app.route('/guard/control/door', methods=['POST', 'GET'])
 def door():
     error = None
-    level = request.form['level']
-    if level == 0:
-        closeDoor()
-    elif level == 1:
-        openDoor()
-    else:
-        pass
+    level = request.args.get('level')
+    try:
+        if int(level) == 0:
+            close_door()
+        elif int(level) == 1:
+            open_door()
+        else:
+            raise Exception("only 0 and 1 support")
+    except Exception:
+        response_failed = {"code": 0, "type": get_type(level), "msg": "failed"}
+        return jsonify({"json": response_failed})
+    response_ok = {"code": 1, "type": get_type(level), "msg": "success"}
+    return jsonify({"json": response_ok})
 
 # open the door
 # output high
-def openDoor():
+def open_door():
     GPIO.setwarnings(False)
     # 设置BCM编码
     GPIO.setmode(GPIO.BCM)
@@ -37,7 +43,7 @@ def openDoor():
 
 # close the door
 # output low
-def closeDoor():
+def close_door():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     pin = 17
@@ -45,6 +51,8 @@ def closeDoor():
     GPIO.output(pin, GPIO.LOW)
     print('door closed')
 
+def get_type(level):
+    return "open" if int(level) == 1 else "close" if int(level) == 0 else None
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
